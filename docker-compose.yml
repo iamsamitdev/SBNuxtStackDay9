@@ -1,0 +1,61 @@
+# กำหนด network
+networks:
+  sbnuxt_network:
+    name: sbnuxt_network
+    driver: bridge
+
+# กำหนด service
+services:
+  # Postgres
+  postgresdb:
+    image: postgres:15.8
+    container_name: postgresdb
+    volumes:
+      - ./postgresdb:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: springstoredb
+    ports:
+      - "6432:5432"
+    restart: always
+    networks:
+      - sbnuxt_network
+  # Spring Boot
+  springapi:
+    container_name: springapi
+    build:
+      context: ./SpringAPI
+      dockerfile: Dockerfile
+    volumes:
+      - ./SpringAPI:/.SpringAPI/app
+      # - ./SpringAPI/uploads/:/.SpringAPI/app/uploads/
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    ports:
+      - "9090:8080"
+    restart: always
+    depends_on:
+      - postgresdb
+    networks:
+      - sbnuxt_network
+  # Nuxt.js 
+  nuxtapp:
+    container_name: nuxtapp
+    build:
+      context: ./NuxtApp
+      dockerfile: Dockerfile
+    volumes:
+      - ./NuxtApp:/.NuxtApp/app
+      - /app/node_modules # bookmarks volume
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3300:3000"
+    depends_on:
+      - springapi
+    restart: always
+    networks:
+      - sbnuxt_network
+      
